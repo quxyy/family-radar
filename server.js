@@ -192,6 +192,19 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // === ФИКС ДВОЙНОГО ВХОДА ===
+    // Ищем, есть ли уже в памяти пользователь с таким же именем и семьей
+    for (const [existingId, user] of Object.entries(users)) {
+      if (user.name === name && user.family === familyId && existingId !== socket.id) {
+        // Нашли «призрака» — удаляем его из памяти и сообщаем всем, что он ушел
+        delete users[existingId];
+        io.to('family:all').emit('user-left', existingId);
+        io.to(`family:${familyId}`).emit('user-left', existingId);
+        console.log(`🧹 Удален старый сокет для ${name}`);
+      }
+    }
+    // ===========================
+
     socket.familyId = familyId;
     socket.userName = name;
     socket.isVip = !!family.vip;
@@ -216,6 +229,7 @@ io.on('connection', (socket) => {
 
     console.log(`✅ ${name} вошёл в ${family.name}${family.vip ? ' (VIP)' : ''}`);
   });
+
 
   socket.on('location', (data) => {
     if (!socket.familyId) return;
