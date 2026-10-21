@@ -105,8 +105,7 @@ app.post('/upload-chat-video', uploadVideo.single('video'), (req, res) => {
 
 const users = {};
 // Хранилище подписок на Push
-const pushSubscriptions = [];
-
+const pushSubscriptions = []; // Теперь будем хранить { socketId, subscription }
 // === Сохранение желаний ===
 const WISHES_FILE = path.join(__dirname, 'wishes.json');
 let wishes = [];
@@ -356,18 +355,20 @@ io.on('connection', (socket) => {
     }
 
     io.emit('chat-message', msg);
-        // Отправляем Push всем подписчикам (кроме отправителя)
+        // Отправляем Push всем подписчикам, КРОМЕ отправителя
     const pushPayload = JSON.stringify({
       title: `💬 ${msg.name}`,
       body: msg.text || (msg.imageUrl ? '📷 Фото' : msg.audioUrl ? '🎤 Голосовое' : msg.videoUrl ? '⭕ Кружок' : 'Новое сообщение'),
       url: '/'
     });
 
-    pushSubscriptions.forEach((sub) => {
-      webpush.sendNotification(sub, pushPayload).catch((err) => {
+    pushSubscriptions.forEach((item) => {
+      // Пропускаем того, кто отправил сообщение
+      if (item.socketId === socket.id) return;
+
+      webpush.sendNotification(item.subscription, pushPayload).catch((err) => {
         if (err.statusCode === 410 || err.statusCode === 404) {
-          // Подписка устарела — удаляем
-          const idx = pushSubscriptions.indexOf(sub);
+          const idx = pushSubscriptions.indexOf(item);
           if (idx > -1) pushSubscriptions.splice(idx, 1);
         }
       });
@@ -410,15 +411,20 @@ io.on('connection', (socket) => {
 socket.on('subscribe-push', (subscription) => {
   if (!subscription || !subscription.endpoint) return;
   
-  // Проверяем, нет ли уже такой подписки
-  const exists = pushSubscriptions.some(s => s.endpoint === subscription.endpoint);
+  const exists = pushSubscriptions.some(s => s.subscription.endpoint === subscription.endpoint);
   if (!exists) {
-    pushSubscriptions.push(subscription);
+    pushSubscriptions.push({ socketId: socket.id, subscription });
     console.log('📲 Новая Push-подписка. Всего:', pushSubscriptions.length);
   }
 });
 
   socket.on('disconnect', () => {
+        // Удаляем подписку отключившегося пользователя
+    for (let i = pushSubscriptions.length - 1; i >= 0; i--) {
+      if (pushSubscriptions[i].socketId === socket.id) {
+        pushSubscriptions.splice(i, 1);
+      }
+    }
     console.log(`🔴 Отключился: ${socket.id}`);
     delete users[socket.id];
 

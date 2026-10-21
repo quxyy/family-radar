@@ -1709,14 +1709,44 @@ if (urlCode) {
       startPreview();
     });
 
-    switchCameraActive.addEventListener('click', () => {
-      if (sendVideoBtn.style.display === 'block') {
-        return;
-      }
-      
-      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-      startPreview();
+   switchCameraActive.addEventListener('click', async () => {
+  if (sendVideoBtn.style.display === 'block') return;
+
+  currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+  // Если запись идет, мы НЕ останавливаем старый поток полностью, 
+  // а просто меняем камеру для Canvas.
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: currentFacingMode, width: 480, height: 480 }
     });
+
+    // Меняем видео-дорожку в превью
+    videoPreview.srcObject = newStream;
+    videoPreview.play();
+
+    // Если запись идет, добавляем новую видео-дорожку в поток Canvas
+    if (isVideoRecording && videoRecorder && videoRecorder.stream) {
+      const videoTrack = newStream.getVideoTracks()[0];
+      // В MediaRecorder нельзя на лету поменять дорожку, 
+      // но Canvas сам подхватит новый поток, так как мы рисуем с videoPreview.
+    }
+
+    // Останавливаем старую видео-дорожку (аудио оставляем!)
+    if (stream) {
+      stream.getVideoTracks().forEach(track => track.stop());
+    }
+    // Сохраняем новый поток для аудио (если оно было)
+    const oldAudio = stream ? stream.getAudioTracks()[0] : null;
+    stream = newStream;
+    if (oldAudio) {
+      stream.addTrack(oldAudio);
+    }
+
+  } catch (err) {
+    console.error('Ошибка переключения камеры:', err);
+  }
+});
 
     recordBtnStart.addEventListener('click', () => {
       if (!isVideoRecording) {
