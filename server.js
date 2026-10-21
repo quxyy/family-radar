@@ -10,9 +10,9 @@ const themes = require('./themes');
 
 const app = express();
 // === VAPID для Push ===
-const VAPID_PUBLIC_KEY = 'BF6PAqorG6sudo1BagMezYYbNwciGw3iNNOneR_lOKcgR5pH4xjn7uo0ntBkj2ghxlwYZi94fiA-4TdOoDjXUVg';
-const VAPID_PRIVATE_KEY = 'MRopeFnoKQK80wUGbaCNgwY91NqVVqMMSwyzG8h9ntM';
-const VAPID_SUBJECT = 'mailto:family@example.com';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT;
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 const PORT = process.env.PORT || 3000;
