@@ -486,6 +486,12 @@ function urlBase64ToUint8Array(base64String) {
     let snowballMode = false;
 
     const urlParams = new URLSearchParams(window.location.search);
+    // Проверяем, есть ли код семьи в ссылке (например, ?code=OVCHINNIKOV2026)
+const urlCode = urlParams.get('code');
+if (urlCode) {
+  document.getElementById('input-code').value = urlCode;
+  // Если есть имя в localStorage, можно сразу войти
+}
     let currentThemeId = urlParams.get('theme') || 'newyear';
 
     const map = L.map('map', {
